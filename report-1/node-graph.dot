@@ -1,0 +1,31 @@
+ digraph G {
+ 	CS [label = "Central Server\nNode A"];
+ 	DSA [label = "Distinguished Node\nNode A"];
+	DSB [label = "Distinguished Node\nNode D"];
+	DSC [label = "Distinguished Node\nNode G"];
+ 	CS -> DSA;
+ 	CS -> DSB;
+ 	CS -> DSC;
+ 		
+ 	subgraph cluster01{
+ 		DSA -> "Node B"
+ 		DSA -> "Node C"
+ 		label = "Group A"
+ 	}
+
+
+ 	subgraph cluster02{
+ 		DSB -> "Node E";
+ 		DSB -> "Node F";
+ 		label = "Group B"
+ 	}
+
+ 	subgraph cluster03{
+ 		Node_A2 [label = "Node A"];
+ 		DSC -> "Node H";
+ 		DSC -> "Node I";
+ 		DSC -> Node_A2;
+ 		label = "Group C"
+ 	}
+	
+ }
