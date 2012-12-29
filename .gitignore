@@ -4,3 +4,8 @@ target/
 *.log
 *.out
 *.pdf
+.project
+/.cache
+/.classpath
+.settings/
+bin/
