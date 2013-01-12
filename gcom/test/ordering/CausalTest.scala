@@ -39,16 +39,42 @@ class CausalSpec extends FlatSpec {
     val thread        = new Thread(transport);
     thread.start();
     
-    ordering.updateView(List((NodeID.fromString("1:1:1"),0),(NodeID.fromString("1:2:1"),0),(id,0)))
+    val a = NodeID.fromString("1:a:1")
+    val b = NodeID.fromString("1:b:1")
+    val c = NodeID.fromString("1:c:1")
     
-    for(i <- shuffled){
-    	val msg = "" + i
-    	sentMessages = sentMessages :+ msg
-    	ordering.sendToAll(List(id), msg)
-    }
+    ordering.updateView(Map((a,0),
+                            (b,0),
+                            (c,0)))
+                            
+    val outboundOrder = List(
+        c -> (0,0,1),
+        a -> (1,0,0), 
+        a -> (2,0,0), 
+        b -> (0,1,2), 
+        a -> (3,2,2), 
+        b -> (0,2,2), 
+        c -> (0,0,2));
+    val expectedOrder = List("1c", "1a", "2a", "2c", "1b", "2b", "3a")
+    outboundOrder.map({ case (node,clock) =>
+      val payload = if(node == a){
+        clock.productElement(0)+"a"
+      } else if(node == b){
+        clock.productElement(1)+"b"
+      } else clock.productElement(2)+"c"
+
+      val testm = TestMessage.create(
+          payload.toString, new CausalMessage(
+              Map(a -> clock._1,
+                  b -> clock._2,
+                  c -> clock._3)
+           ));
+      testm.addSender(node)
+      transport.receiveMessage(testm)
+    })
     
     Thread.sleep(1000)
-    assert(receivedList.map(_.payload) === sentMessages )
+    assert(receivedList.map(_.payload) === expectedOrder )
 
     transport.receiveMessage(new BlackSpot())
   }

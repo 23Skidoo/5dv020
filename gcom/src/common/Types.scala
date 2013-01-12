@@ -32,7 +32,7 @@ case class BlackSpot() extends AbstractMessage;
 
 sealed abstract class MessageOrdering;
 case class NoOrdering() extends MessageOrdering;
-case class CausalMessage(clock: Vector[Int]) extends MessageOrdering
+case class CausalMessage(clock: Map[NodeID, Int]) extends MessageOrdering
 case class FIFOMessage(seq: Int) extends MessageOrdering
 case class TotalOrdering(order: Int) extends MessageOrdering
 

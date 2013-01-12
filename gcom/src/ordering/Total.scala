@@ -4,8 +4,6 @@ import gcom.common.Message
 import gcom.communication.Communication
 import gcom.transport.Transport
 import gcom.common.TotalOrdering
-import scala.swing.Publisher
-import scala.swing.event.Event
 
 
 
