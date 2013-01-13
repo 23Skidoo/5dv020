@@ -77,5 +77,9 @@ object TestMessage{
 /* Debug Events for the GUI */
 import scala.swing.event._
 /** name: The name in the left box, header: header in right box, list of messages */
-case class UpdateQueue(name: String, list: List[String]) extends Event
+case class UpdateQueue(
+    ordering: gcom.ordering.Ordering,
+    header: String,
+    list: List[String])
+  extends Event
 case class UpdateSentMessages(num: Int) extends Event

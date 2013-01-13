@@ -5,15 +5,11 @@ import gcom.transport.Transport;
 
 class NonReliable(t : Transport, callbck : Message => Unit)
                  extends Communication(t, callbck) {
+  
   def sendToAll(dsts : Set[NodeID],
                 payload: String, ordering: OrderingData) : List[NodeID] = {
-    var retList = List[NodeID]()
-    dsts.foreach { dst =>
-      val mid = transport.sendMessage(dst, Message(NoReliabilityData(),
-                                                   ordering, payload))
-      retList = mid.map({ id => id :: retList}).getOrElse(retList)
-    }
-    return retList
+    val msg = Message(NoReliabilityData(), ordering, payload)
+    sendWithDelay(dsts, msg)
   }
 
   def receiveMessage(msg : Message) = callback(msg)

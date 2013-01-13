@@ -14,32 +14,37 @@ class Reliable(t : Transport, callbck : Message => Unit,
 
   def sendToAll(dsts : Set[NodeID], payload: String,
                 ordering: OrderingData) : List[NodeID] = {
-    var retList = List[NodeID]()
-    dsts.foreach { dst =>
-      val mid = transport.sendMessage(dst, Message(ReliableMsgData(localSeq),
-                                                   ordering,payload))
-      localSeq = localSeq + 1
-      retList = mid.map({ id => id :: retList}).getOrElse(retList)
+    var actuallySendTo = dsts
+    if(drop){
+      actuallySendTo = dsts take 2
     }
+    var retList = List[NodeID]()
+    sendWithDelay(actuallySendTo,
+               Message(ReliableMsgData(localSeq), ordering,payload))
+    localSeq += 1
     return retList
   }
 
   def receiveMessage(msg : Message) = { msg match {
    case Message(rm: ReliableMsgData,_ , _) =>
     val from = msg.senders.head;
-    if(!sequences.contains(from)){
+    if ( ! sequences.contains(from) ) {
       sequences += (from -> IntMap())
     }
     if(sequences(from).contains(rm.seq)){
       //Message already received, ignore
-    }else if(from != t.nodeID){
+    } else if ( from != t.nodeID ) {
+      //Message is not from us, relay it to others
       val updatedSequence = sequences(from) + (rm.seq -> true)
       sequences += (from -> updatedSequence)
 
       hostCallback().map({ host =>
           transport.sendMessage(host, msg)
       })
-      callback(msg)
+      callback( msg )
+    } else {
+      // It was from us and not in sequences
+      callback( msg )
     }
 
   case Message(um: NoReliabilityData,_ , _) =>

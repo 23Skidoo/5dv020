@@ -164,10 +164,15 @@ object Client {
     val (communicator, transport, comm, ordering) =
           assembleCommunicator(nsrv, leader)
     // Calls communicator's setOnReceive
-    val gui = new gcom.client.gui.ChatGui(communicator)
+    val debugGui = 
+      new gcom.client.gui.DebugGui(transport,
+                                    ordering,
+                                    communicator, comm)
+    debugGui.visible = true
     val transportThread = new Thread(transport)
     transportThread.start()
-    gui.main(Array[String]())
+    //val gui = new gcom.client.gui.ChatGui(communicator)
+    //gui.main(Array[String]())
   }
 
   def commandKill(nsrv: NameServer, group : Group) = {

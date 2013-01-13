@@ -39,7 +39,9 @@ class Total(c: Communication,
         callbck(msg)
         order = order + 1
       })
-      publish(UpdateQueue("Total: " + order, holdBacks map (_.toString ) ))
+      publish(UpdateQueue(this,
+          "Total: " + order,
+          holdBacks map (_.toString ) ))
 
     }
     case msg: Message => callback(msg)

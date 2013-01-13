@@ -3,28 +3,42 @@ package gcom.client.gui
 import swing._
 import swing.event._
 import java.awt.FlowLayout
-import com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel
-import com.sun.java.swing.plaf.gtk.GTKLookAndFeel
 import javax.swing.{UIManager}
 import java.awt.GridBagConstraints
 import java.awt.GridBagConstraints
 import gcom.Group
 import gcom.common._
+import gcom.transport._
+import gcom.Communicator
+import gcom.ordering.Ordering
+import gcom.communication.Communication
+import gcom.ordering.NonOrdered
+import scala.swing.ListView.Renderer
 
-class DebugGui extends SimpleSwingApplication {
+/**
+ * Provides 
+ * top                    : Returns a mainframe with debugging GUI
+ * showGroupSelectDialog  : Shows a dialog where the user can select a group
+ */
+class DebugGui(
+    t: Transport,
+    o: Ordering, 
+    communicator: Communicator,
+    com: Communication) extends MainFrame {
 
   //initialize NameServer
   UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName)
-
-  var messageQueues = Map[String,List[String]]();
+  t match {
+    case x: BasicTransport => listenTo(x) 
+  }
+  listenTo(o)
+  communicator.setOnReceive(sendFunction(_))
+  
+  var messageQueues = Map[Ordering,(String,List[String])]();
   var messageCounter = 0
-
-  def top = new MainFrame {
-    title = "ChatGui"
-
-    /* Display a dialog for user to select group before showing gui */
+  
+  def showGroupSelectDialog(possibilities: List[Group]): Option[Group] = {
     import Dialog._
-    val possibilities = DummyNameServer.listGroups;
     val buttons = new BoxPanel(Orientation.Vertical)
     val groupToJoin = showInput[Group](buttons,
       "Select a server",
@@ -32,16 +46,21 @@ class DebugGui extends SimpleSwingApplication {
       scala.swing.Dialog.Message.Plain,
       Swing.EmptyIcon,
       possibilities, null)
+    groupToJoin
+  }
+  
+  
+  object chatBox extends TextArea{
+    text = "Welcome to chat"
+    editable = false;
+  }
 
-    if(groupToJoin.isEmpty){
-      quit()
-    }
+  object scrollingChatBox extends ScrollPane{
+    contents = chatBox;
+  }
 
-    val com = DummyNameServer.joinGroup(
-        groupToJoin.get,
-        { msg =>
-
-          chatBox.append("\n" + msg)
+  def sendFunction(msg: String) {
+        chatBox.append("\n" + msg)
           /* Work around bug where maximum was not yet updated, let swing
            * handle scrolling down.
            */
@@ -51,8 +70,11 @@ class DebugGui extends SimpleSwingApplication {
                       bar.value = bar.maximum
                   }
               }
-          );
-         });
+         );
+  }
+
+  
+    title = "ChatGui"
 
     object dropText extends Label("Delay: ")
     object dropInput extends CheckBox
@@ -61,8 +83,9 @@ class DebugGui extends SimpleSwingApplication {
       columns = 3;
     }
 
-    object queueList extends ListView[String]{
-      listData = List("No queues...")
+    object queueList extends ListView[(String,Ordering)]{
+      listData = List()
+      renderer = Renderer(_._1)
     }
 
     object messageList extends ListView[String]{
@@ -73,34 +96,9 @@ class DebugGui extends SimpleSwingApplication {
     object button extends Button {
       text = "Send"
     }
-    object chatBox extends TextArea{
-      text = "Welcome to chat"
-      editable = false;
-      listenTo(button)
-      listenTo(chatInput)
-      reactions += {
-        case ButtonClicked(button) => sendMsg()
-        case EditDone(_) => sendMsg()
-      }
-      def sendMsg() = {
-         val drop = dropInput.selected;
-         val delay = try{
-            delayInput.text.toInt
-            } catch{
-              case e: NumberFormatException =>
-                0
-            }
-          messageCounter = 0
-          com.broadcastMessage(chatInput.text)
-      }
 
-    }
-
-    object scrollingChatBox extends ScrollPane{
-      contents = chatBox;
-    }
     object nodeList extends ListView[String]{
-      listData = List("Waiting for node info...")
+      listData = communicator.listGroupMembers.map(_.toString).toList
     }
 
     object counter extends Label("0 Messages")
@@ -168,15 +166,15 @@ class DebugGui extends SimpleSwingApplication {
       gbc.fill = fill
       add(component,new Constraints(gbc))
     }
-
+ 
     }
 
 
     listenTo(queueList.selection)
     reactions += {
-      case UpdateQueue(name, list) => {
+      case UpdateQueue(key, header, list) => {
         val selection = queueList.selection.anchorIndex;
-        messageQueues += (name -> list)
+        messageQueues += (key -> (header, list))
         updateList();
         queueList.selectIndices(selection)
 
@@ -184,22 +182,43 @@ class DebugGui extends SimpleSwingApplication {
       // `` lets us match against that specific variable.
       case ListSelectionChanged(`queueList`,range,live) => {
         val key = queueList.listData(queueList.selection.anchorIndex)
-        messageList.listData = messageQueues(key)
+        messageList.listData = messageQueues.getOrElse(key._2, ( "", List() ) )._2
       }
       case UpdateSentMessages(num) => {
         messageCounter += 1
         counter.text = messageCounter.toString + " Messages"
       }
     }
+    listenTo(button)
+    listenTo(chatInput)
+    reactions += {
+      case ButtonClicked(button) => sendMsg()
+    }
+    def sendMsg() = {
+       val drop = dropInput.selected;
+       val delay = try{
+          delayInput.text.toInt
+       } catch{
+         case e: NumberFormatException =>
+          0
+       }
+       messageCounter = 0
+       com.setDelay(delay);
+       com.setDrop(drop)
+       communicator.broadcastMessage(chatInput.text)
+    }
+
 
     private def updateList() = {
-      queueList.listData_=(messageQueues.keySet.toSeq)
+      queueList.listData = messageQueues.map({
+        case (ordering, (header,list)) => (header, ordering)
+      }).toList
     }
 
     override def closeOperation(){
-      com.leaveGroup
+      communicator.leaveGroup
       super.closeOperation
     }
-  }
+  
 
 }
