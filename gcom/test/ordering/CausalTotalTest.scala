@@ -32,6 +32,11 @@ class CausalTotalSpec extends FlatSpec {
 
     var order = 0;
 
+    val a = NodeID.fromString("1:a:1")
+    val b = NodeID.fromString("1:b:1")
+    val c = NodeID.fromString("1:c:1")
+
+    
     val logger        = LoggerFactory.getLogger(id.toString)
     val transport     = BasicTransport.create(id, {msg =>}, logger);
     val communication = NonReliable.create(transport, {msg =>})
@@ -39,14 +44,10 @@ class CausalTotalSpec extends FlatSpec {
       CausalTotal.create(
           communication,
           {msg => receivedList = receivedList :+ msg },
-          id,
+          a,
           {() => order += 1; order - 1})
     val thread        = new Thread(transport);
     thread.start();
-
-    val a = NodeID.fromString("1:a:1")
-    val b = NodeID.fromString("1:b:1")
-    val c = NodeID.fromString("1:c:1")
 
     ordering.updateView(Map((a,0),
                             (b,0),

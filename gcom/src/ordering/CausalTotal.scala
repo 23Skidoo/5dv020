@@ -5,6 +5,8 @@ import gcom.common.Message
 import gcom.common.NodeID
 import gcom.common.OrderingData
 import gcom.common.CausalTotalData
+import gcom.common.UpdateQueue
+import gcom.common.UpdateSentMessages
 
 class CausalTotal(
     c: Communication,
@@ -20,8 +22,12 @@ class CausalTotal(
   //Forward messages from total and causal
   listenTo(total)
   listenTo(causal)
+  deafTo(this)
   reactions += {
-    case x => publish(x)
+    case x: UpdateSentMessages => publish(x)
+  }
+  reactions += {
+    case x: UpdateQueue => publish(x)
   }
 
   def receiveMessage(msg : Message) = {

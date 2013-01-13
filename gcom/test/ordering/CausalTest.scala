@@ -31,19 +31,20 @@ class CausalSpec extends FlatSpec {
     val shuffled = Random.shuffle((1 to 3))
 
     var order = 0;
-
+    
+    val a = NodeID.fromString("1:a:1")
+    val b = NodeID.fromString("1:b:1")
+    val c = NodeID.fromString("1:c:1")
+    
     val logger        = LoggerFactory.getLogger(id.toString)
     val transport     = BasicTransport.create(id, {msg =>}, logger);
     val communication = NonReliable.create(transport, {msg =>})
     val ordering      =
       Causal.create(communication, {msg => receivedList =
-                                            receivedList :+ msg }, id)
+                                            receivedList :+ msg }, a)
     val thread        = new Thread(transport);
     thread.start();
 
-    val a = NodeID.fromString("1:a:1")
-    val b = NodeID.fromString("1:b:1")
-    val c = NodeID.fromString("1:c:1")
 
     ordering.updateView(Map((a,0),
                             (b,0),
