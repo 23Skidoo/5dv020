@@ -23,9 +23,31 @@ object NodeID {
 
 sealed abstract class OrderingData
 case class NoOrderingData() extends OrderingData
-case class CausalData(clock: Map[NodeID, Int]) extends OrderingData
 case class FIFOData(seq: Int) extends OrderingData
-case class TotalOrdData(order: Int) extends OrderingData
+
+
+trait IsCausal extends OrderingData{
+  
+  val clock: Map[NodeID, Int]
+  /* Because we need to be able to create new
+   * causals with the same type.
+   */
+  def updated(clock: Map[NodeID, Int]) : IsCausal
+}
+trait IsTotal extends OrderingData{
+  val order: Int
+}
+case class CausalData(clock: Map[NodeID, Int]) extends IsCausal{
+  override def updated(clock: Map[NodeID, Int]) = CausalData(clock)
+}
+case class TotalOrdData(order: Int) extends IsTotal
+
+case class CausalTotalData(
+    clock: Map[NodeID, Int],
+    order: Int) 
+  extends IsCausal with IsTotal {
+  override def updated(clock: Map[NodeID, Int]) = CausalTotalData(clock,this.order)
+}
 
 sealed abstract class ReliabilityData
 case class NoReliabilityData() extends ReliabilityData

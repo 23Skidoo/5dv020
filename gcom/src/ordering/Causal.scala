@@ -3,6 +3,7 @@ package gcom.ordering;
 import gcom.common.NodeID
 import gcom.common.Message
 import gcom.common.CausalData
+import gcom.common.IsCausal
 import gcom.communication.Communication
 
 class Causal(
@@ -12,19 +13,19 @@ class Causal(
     extends Ordering(c, callbck){
 
   private var vectorClock = Map[NodeID,Int]();
-  private var holdBacks = List[(Message, CausalData)]();
+  private var holdBacks = List[(Message, IsCausal)]();
 
   private var clock = 0;
   private val myAddr = me;
 
   def receiveMessage(msg: Message){
     msg match {
-      case Message(_, cm : CausalData, _) => handle_message(msg, cm);
+      case Message(_, cm : IsCausal, _) => handle_message(msg, cm);
       case msg: Message => callback(msg)
     }
   }
 
-  private def handle_message(newM: Message, newCm: CausalData){
+  private def handle_message(newM: Message, newCm: IsCausal){
     holdBacks = (newM, newCm) :: holdBacks
     var changed = true;
 
@@ -68,7 +69,7 @@ class Causal(
     //Remove clocks from messages
     holdBacks = holdBacks.map { case (m, cm) =>
       val clocks = cm.clock -- newClock.keySet
-      (m,CausalData(clocks))
+      (m,cm.updated(clocks))
     }
     vectorClock = newClock
   }

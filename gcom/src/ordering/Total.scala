@@ -4,6 +4,8 @@ import gcom.common.Message
 import gcom.communication.Communication
 import gcom.transport.Transport
 import gcom.common.TotalOrdData
+import gcom.common.IsTotal
+import gcom.common.IsTotal
 
 
 
@@ -15,10 +17,10 @@ class Total(c: Communication,
             callbck : Message => Unit, nextOrder : () => Int)
       extends Ordering(c, callbck) {
   var order = 0;
-  var holdBacks = List[(Message, TotalOrdData)]();
+  var holdBacks = List[(Message, IsTotal)]();
   private var getNextOrder = nextOrder;
   def receiveMessage(msg : Message) { msg match{
-    case Message(_,totalMsg: TotalOrdData,_) => {
+    case Message(_,totalMsg: IsTotal,_) => {
       /*
        * We want to get every consecutive message from holdbacks
        *
@@ -44,7 +46,7 @@ class Total(c: Communication,
     }
   }
 
-  private def shiftIndex(list: List[((Message, TotalOrdData), Int)],
+  private def shiftIndex(list: List[((Message, IsTotal), Int)],
                          amount: Int) = {
     list.map(a => (a._1,a._2+amount))
   }
