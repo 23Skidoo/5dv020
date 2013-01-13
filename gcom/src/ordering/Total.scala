@@ -5,8 +5,7 @@ import gcom.communication.Communication
 import gcom.transport.Transport
 import gcom.common.TotalOrdData
 import gcom.common.IsTotal
-import gcom.common.IsTotal
-
+import gcom.common.UpdateQueue
 
 
 /**
@@ -19,6 +18,7 @@ class Total(c: Communication,
   var order = 0;
   var holdBacks = List[(Message, IsTotal)]();
   private var getNextOrder = nextOrder;
+  
   def receiveMessage(msg : Message) { msg match{
     case Message(_,totalMsg: IsTotal,_) => {
       /*
@@ -39,7 +39,7 @@ class Total(c: Communication,
         callbck(msg)
         order = order + 1
       })
-
+      publish(UpdateQueue("Total: " + order, holdBacks map (_.toString ) ))
 
     }
     case msg: Message => callback(msg)

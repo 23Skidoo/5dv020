@@ -6,21 +6,16 @@ import com.sun.java.swing.plaf.gtk.GTKLookAndFeel
 import javax.swing.{UIManager}
 import java.awt.GridBagConstraints
 import java.awt.GridBagConstraints
-import gcom.common.Message
 import gcom.Group
-
-
-//Move me somewhere sane
-case class UpdateQueue(name: String,list: List[Message]) extends Event
-case class UpdateSentMessages(num: Double) extends Event
-    
+import gcom.common._
 
 object DebugGui extends SimpleSwingApplication {
 
   //initialize NameServer
   UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName)
 
-  var messageQueues = Map[String,List[Message]]();
+  var messageQueues = Map[String,List[String]]();
+  var messageCounter = 0
 
   def top = new MainFrame {
     title = "ChatGui"
@@ -93,6 +88,7 @@ object DebugGui extends SimpleSwingApplication {
               case e: NumberFormatException =>
                 0
             }
+          messageCounter = 0
           com.broadcastMessage(chatInput.text)
       }
 
@@ -105,7 +101,7 @@ object DebugGui extends SimpleSwingApplication {
       listData = List("Waiting for node info...")
     }
 
-    object counter extends Label("0 msg/sec")
+    object counter extends Label("0 Messages")
 
 
     object chatInput extends TextField{
@@ -185,11 +181,12 @@ object DebugGui extends SimpleSwingApplication {
       }
       // `` lets us match against that specific variable.
       case ListSelectionChanged(`queueList`,range,live) => {
-        val data = queueList.listData(queueList.selection.anchorIndex)
-        messageList.listData = data.map(_.toString)
+        val key = queueList.listData(queueList.selection.anchorIndex)
+        messageList.listData = messageQueues(key)
       }
       case UpdateSentMessages(num) => {
-        counter.text = num.toString + " m/sec "
+        messageCounter += 1
+        counter.text = messageCounter.toString + " Messages"
       }
     }
 

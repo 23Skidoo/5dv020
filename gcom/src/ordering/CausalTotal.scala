@@ -16,6 +16,13 @@ class CausalTotal(
   
   val total =  Total.create(c, callback, nextOrder)
   val causal = Causal.create(c, {println("causal deliver"); total.receiveMessage(_) }, thisNode)
+
+  //Forward messages from total and causal
+  listenTo(total)
+  listenTo(causal)
+  reactions += {
+    case x => publish(x)
+  }
   
   def receiveMessage(msg : Message) = {
 	  causal.receiveMessage(msg)
@@ -34,6 +41,8 @@ class CausalTotal(
     val causalData = causal.createOrdering
     CausalTotalData(causalData.clock, totalData.order)
   }
+  
+
 }
 
 object CausalTotal {

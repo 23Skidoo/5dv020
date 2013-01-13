@@ -5,6 +5,7 @@ import gcom.common.Message
 import gcom.common.CausalData
 import gcom.common.IsCausal
 import gcom.communication.Communication
+import gcom.common.UpdateQueue
 
 class Causal(
       c: Communication,
@@ -23,6 +24,9 @@ class Causal(
       case Message(_, cm : IsCausal, _) => handle_message(msg, cm);
       case msg: Message => callback(msg)
     }
+    publish(UpdateQueue(
+        "Causal: " + clock,
+        "Our clock " + vectorClock :: holdBacks map (_.toString) ))
   }
 
   private def handle_message(newM: Message, newCm: IsCausal){
@@ -72,6 +76,7 @@ class Causal(
       (m,cm.updated(clocks))
     }
     vectorClock = newClock
+    clock = vectorClock(me)
   }
 
   def createOrdering(): CausalData = {
