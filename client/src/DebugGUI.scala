@@ -75,7 +75,7 @@ class DebugGui(
   }
 
 
-    title = "ChatGui"
+    title = "ChatGui " + t.nodeID
 
     object dropText extends Label("Delay: ")
     object dropInput extends CheckBox

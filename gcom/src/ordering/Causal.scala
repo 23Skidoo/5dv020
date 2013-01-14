@@ -47,13 +47,14 @@ class Causal(
       changed = false
     } else {
       // Make sure outBoundClocks always has the largest numbers 
-      outBoundClock = newCm.clock.map({ case (from, newclocks) =>
-        val oldClocks = outBoundClock.getOrElse(from,0)
-        if(oldClocks < newclocks){
-          from -> newclocks  
-        } else from -> oldClocks
+      val newBetterClocks = newCm.clock.map({ case (from, newclock) =>
+        val oldClock = outBoundClock.getOrElse(from,0)
+        if(oldClock < newclock){
+          from -> newclock  
+        } else from -> oldClock
         
       })
+      outBoundClock = outBoundClock ++ newBetterClocks
       holdBacks = (newM, newCm) :: holdBacks
     }
     
@@ -78,7 +79,7 @@ class Causal(
       myClock: Map[NodeID, Int],
       otherClock: Map[NodeID, Int]): Boolean = {
     var earlier = true;
-    for((node, clock) <- myClock
+    for((node, clock) <- otherClock
       if(node != from && otherClock(node) > myClock(node))) {
          earlier = false;
     }

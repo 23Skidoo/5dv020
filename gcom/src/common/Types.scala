@@ -4,7 +4,7 @@ package gcom.common
 sealed case class NodeID (name : String, host: String, port: Int) {
 
   override def toString() : String = {
-    return name + ":" + host + ":" + port.toString;
+    return name.substring(0, 3);
   }
 
   /* Since NodeID is a case class, we get correct implementations of
