@@ -18,11 +18,10 @@ class FIFO(c: Communication, callbck: Message => Unit)
     }
     val hold = holdBacks.map( {
       case (node, list) => {
-        ("" + node + " " + sequences(node)) :: list.map("" + _)
+        ("" + node + " " + sequences(node)) :: list.map("    " + _._1)
       } 
     })
     publish(UpdateQueue(this,"FIFO: " + curSeq, hold.flatten.toList))
-     
   }
 
   private def handle_message(newm: Message, newfm: FIFOData){

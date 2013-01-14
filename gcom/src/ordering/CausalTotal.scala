@@ -30,6 +30,9 @@ class CausalTotal(
   reactions += {
     case x: UpdateQueue => publish(x)
   }
+  
+  override def setOnReceive(callbck: Message => Unit) = 
+    total.setOnReceive(callbck)
 
   def receiveMessage(msg : Message) = { msg match {
     case Message(_, data : CausalTotalData, _) => {
