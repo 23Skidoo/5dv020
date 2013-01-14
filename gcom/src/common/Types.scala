@@ -58,7 +58,7 @@ sealed abstract class AbstractMessage extends Serializable {
   var senders = List[NodeID]();
 
   def getSenders() : List[NodeID] = senders;
-  def addSender(n : NodeID) : Unit = senders = n +: senders;
+  def addSender(n : NodeID) : Unit = senders = senders :+ n;
 }
 
 case class Message(reliability : ReliabilityData,

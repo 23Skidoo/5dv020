@@ -33,10 +33,9 @@ class Total(c: Communication,
       val consecMap = shiftIndex(zippedWithIndex, order).groupBy(t => t match {
         case ((m,msgOrder), mOrder) => msgOrder.order == mOrder;
       })
-
       holdBacks = consecMap.get(false).getOrElse(List()).map(_._1)
       consecMap.get(true).getOrElse(List()).foreach({ case ((msg,_),_) =>
-        callbck(msg)
+        callback(msg)
         order = order + 1
       })
       publish(UpdateQueue(this,

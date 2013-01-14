@@ -44,6 +44,9 @@ class Reliable(t : Transport, callbck : Message => Unit,
       callback( msg )
     } else {
       // It was from us and not in sequences
+
+      val updatedSequence = sequences(from) + (rm.seq -> true)
+      sequences += (from -> updatedSequence)
       callback( msg )
     }
 
