@@ -10,7 +10,6 @@ abstract class Communication(t : Transport, callbck : Message => Unit) {
 
   var delay: Long = 0
   var drop = false
-  var delayedMessages = List[(Message,Long)]()
 
   /** Send a message to all nodes in the list. Return the IDs of those that were
    *  reachable. */
@@ -21,30 +20,24 @@ abstract class Communication(t : Transport, callbck : Message => Unit) {
   def setDrop(drop: Boolean) = this.drop = drop
 
   protected def sendWithDelay(dsts: Set[NodeID], msg: Message): Set[NodeID] = {
-    val mightSend = delayedMessages.groupBy({
-      case (msg, delayedTime) => {
-          delayedTime < Platform.currentTime
-      }
-    })
-    delayedMessages = mightSend.getOrElse(false, List())
-    mightSend.getOrElse(true, List()).map({ case (msg, _) =>
-      dsts.foreach({
-        transport.sendMessage(_, msg)
-      })
 
-    })
     if(delay == 0) {
       dsts.foreach ({ dst =>
         transport.sendMessage(dst, msg)
       })
     }
     else{
-      delayedMessages =
-        (msg, Platform.currentTime+delay*1000) :: delayedMessages
+      new Thread({new Runnable(){
+        def run() {
+          Thread.sleep(delay*1000)
+          dsts.foreach ({ dst =>
+            transport.sendMessage(dst, msg)
+          })
+        }
+      }}).start()
+      
     }
-
     dsts.filter({dst => transport.pingNode(dst)})
-
   }
   /** Change the onReceive callback. */
   def setOnReceive(callbck : Message => Unit) : Unit = callback = callbck

@@ -31,14 +31,15 @@ class FIFO(c: Communication, callbck: Message => Unit)
       holdBacks += (from -> List());
     }
     if(sequences.get(from).isEmpty){
-      sequences += (from -> 0);
+      sequences += (from -> newfm.seq);
     }
-    if(sequences(from) == newfm.seq){
+    if(sequences(from) > newfm.seq){
+      //Discard message
+    } else if(sequences(from) == newfm.seq){
       sequences += from -> (newfm.seq + 1);
       callback(newm)
       check_queue(from);
-    }
-    else {
+    } else {
       holdBacks += from-> ((newm,newfm) :: holdBacks(from));
     }
   }
@@ -59,17 +60,6 @@ class FIFO(c: Communication, callbck: Message => Unit)
     val msg = FIFOData(curSeq);
     curSeq += 1;
     return msg;
-  }
-
-  def updateView(nodes: Seq[(NodeID, Int)]) = {
-    //Remember messages not yet delivered
-    val newHoldBacks = for (n <- nodes) yield {
-      if(holdBacks.contains(n._1)) { (n._1, holdBacks(n._1)  ) }
-      else                         { (n._1, List() ) }
-    };
-    holdBacks = Map(newHoldBacks: _*);
-
-    sequences = Map(nodes: _*);
   }
 
   def setOrderCallback( callback: () => Int ) = { ; }

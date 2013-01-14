@@ -14,6 +14,7 @@ import gcom.ordering.Ordering
 import gcom.communication.Communication
 import gcom.ordering.NonOrdered
 import scala.swing.ListView.Renderer
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Provides
@@ -35,7 +36,7 @@ class DebugGui(
   communicator.setOnReceive(sendFunction(_))
 
   var messageQueues = Map[Ordering,(String,List[String])]();
-  var messageCounter = 0
+  var messageCounter: AtomicInteger = new AtomicInteger(0)
 
   def showGroupSelectDialog(possibilities: List[Group]): Option[Group] = {
     import Dialog._
@@ -136,7 +137,7 @@ class DebugGui(
           grid = (1,0)
           gridheight = 1
           gridwidth = 1
-          weightx = 0.2
+          weightx = 0.8
           weighty = 1
           anchor = GridBagPanel.Anchor.LineStart
           fill = GridBagPanel.Fill.Both
@@ -185,8 +186,7 @@ class DebugGui(
         messageList.listData = messageQueues.getOrElse(key._2, ( "", List() ) )._2
       }
       case UpdateSentMessages(num) => {
-        messageCounter += 1
-        counter.text = messageCounter.toString + " Messages"
+        incCounter()
       }
     }
     listenTo(button)
@@ -202,13 +202,21 @@ class DebugGui(
          case e: NumberFormatException =>
           0
        }
-       messageCounter = 0
+       
+       setCounter(0)
        com.setDelay(delay);
        com.setDrop(drop)
        communicator.broadcastMessage(chatInput.text)
     }
-
-
+    
+    def setCounter(i: Int){
+      messageCounter = new AtomicInteger(i)
+      counter.text = messageCounter.toString + " Messages"
+    }
+    def incCounter() {
+      counter.text = messageCounter.incrementAndGet() + " Messages" 
+    } 
+    
     private def updateList() = {
       queueList.listData = messageQueues.map({
         case (ordering, (header,list)) => (header, ordering)

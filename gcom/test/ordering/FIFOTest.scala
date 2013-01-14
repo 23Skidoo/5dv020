@@ -36,13 +36,10 @@ class FIFOSpec extends FlatSpec {
     val b = NodeID.fromString("1:b:1")
     val c = NodeID.fromString("1:c:1")
 
-    ordering.updateView(List( (a,1), (b,1), (c,1)))
-
     // c:1 a:3 a:2 b:1 a:1 b:2 c:2 should result in c:1 b:1 a:1-3 b:2 c:2
-    val outboundOrder = List(c -> 1, a -> 3, a -> 2, b -> 1,
-                             a -> 1, b -> 2, c -> 2);
-    val expectedOrder = List(c -> 1, b -> 1, a -> 1,
-                             a-> 2, a -> 3, b -> 2, c -> 2)
+    // a -> 0 should be "lost"
+    val outboundOrder = List(c -> 1, a -> 1, a -> 2, b -> 1, a -> 0, a -> 1, b -> 2, c -> 2);
+    val expectedOrder = List(c -> 1, a -> 1, a -> 2, b -> 1, b -> 2, c -> 2)
     outboundOrder.map({ m =>
       val testm = TestMessage.create(""+m._2, new FIFOData(m._2));
       testm.addSender(m._1)

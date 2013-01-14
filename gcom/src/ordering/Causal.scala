@@ -31,9 +31,27 @@ class Causal(
   }
 
   private def handle_message(newM: Message, newCm: IsCausal){
-    holdBacks = (newM, newCm) :: holdBacks
+    val from = newM.senders.head
+    //If we haven't seen a node before, assume this is the first we get
+    var newVectors = (newCm.clock -- vectorClock.keys)
+    //If this was sent from one of the new ones, decrement so it gets delivered
+    if(newVectors.contains(from)){
+      val clock = newVectors(from) - 1
+      newVectors = newVectors + (from -> clock)
+    }
+    vectorClock = newVectors ++ vectorClock
+    
+    
+    
+  
     var changed = true;
-
+    // If message is from the past, ignore
+    if(vectorClock(from) > newCm.clock(from)){
+      changed = false
+    } else {
+      holdBacks = (newM, newCm) :: holdBacks
+    }
+    
     while(changed){
       changed = false;
       holdBacks.foreach{ case (m, cm) =>
@@ -41,7 +59,7 @@ class Causal(
         if(cm.clock(from) == vectorClock(from) + 1 &&
             earlierByOthers(from,vectorClock,cm.clock)){
             callback(m);
-            holdBacks = holdBacks.filter(_ != m)
+            holdBacks = holdBacks.filter(_ != (m, cm))
             vectorClock = vectorClock + (from -> (vectorClock(from) + 1));
             changed = true
           }
@@ -49,7 +67,7 @@ class Causal(
       };
     }
   }
-
+ 
   private def earlierByOthers(
       from: NodeID,
       myClock: Map[NodeID, Int],
@@ -62,22 +80,6 @@ class Causal(
      //If the above predicate was true for zero elements, it was earlier than
      //others
      earlier
-  }
-
-  /** * @param nodes is a sequence of tuples containing nodes and their current
-  clock */
-
-  def updateView(newClock: Map[NodeID, Int]) = {
-    //Only remember messages from nodes in view
-    holdBacks = holdBacks.filter({case (m,cm) =>
-                                  newClock.contains(m.senders.head) })
-    //Remove clocks from messages
-    holdBacks = holdBacks.map { case (m, cm) =>
-      val clocks = cm.clock -- newClock.keySet
-      (m,cm.updated(clocks))
-    }
-    vectorClock = newClock
-    clock = vectorClock(me)
   }
 
   def createOrdering(): CausalData = {
