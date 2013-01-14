@@ -16,7 +16,7 @@ class Causal(
   private var vectorClock = Map[NodeID,Int]();
   private var holdBacks = List[(Message, IsCausal)]();
 
-  private var clock = 0;
+  private var outBoundClock = Map[NodeID,Int]();
   private val myAddr = me;
 
   def receiveMessage(msg: Message){
@@ -26,7 +26,7 @@ class Causal(
     }
     publish(UpdateQueue(
         this,
-        "Causal: " + clock,
+        "Causal: " + outBoundClock,
         "Our clock " + vectorClock :: holdBacks map (_.toString) ))
   }
 
@@ -41,14 +41,19 @@ class Causal(
     }
     vectorClock = newVectors ++ vectorClock
     
-    
-    
-  
     var changed = true;
     // If message is from the past, ignore
     if(vectorClock(from) > newCm.clock(from)){
       changed = false
     } else {
+      // Make sure outBoundClocks always has the largest numbers 
+      outBoundClock = newCm.clock.map({ case (from, newclocks) =>
+        val oldClocks = outBoundClock.getOrElse(from,0)
+        if(oldClocks < newclocks){
+          from -> newclocks  
+        } else from -> oldClocks
+        
+      })
       holdBacks = (newM, newCm) :: holdBacks
     }
     
@@ -84,8 +89,8 @@ class Causal(
 
   def createOrdering(): CausalData = {
     val index = (me);
-    clock = clock + 1;
-    CausalData(vectorClock + (index -> clock ));
+    outBoundClock = outBoundClock + ( me -> (outBoundClock.getOrElse(me, 0) + 1));
+    CausalData(outBoundClock);
   }
 
   def setOrderCallback( callback: () => Int ) = { ; }
