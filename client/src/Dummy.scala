@@ -30,7 +30,7 @@ object DummyNameServer {
     new DummyCommunicator(onRecv);
   }
   def listGroups(): List[Group] = {
-    List(Group("Group1", ReliableMulticast(),FIFOOrdering()),
-         Group("Group2", UnreliableMulticast(),TotalOrdering()));
+    List(Group("Group1", ReliableMulticast(),FIFOOrdering(), 0),
+         Group("Group2", UnreliableMulticast(),TotalOrdering(), 0));
   }
 }

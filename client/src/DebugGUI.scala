@@ -98,20 +98,8 @@ class DebugGui(
 
     object button extends Button {
       text = "Send"
+      enabled = !communicator.isLocked
     }
-
-    object lockButton extends Button {
-      text = "Lock"
-    }
-
-    listenTo(lockButton)
-    reactions += {
-      case ButtonClicked(`lockButton`) =>
-        lockButton.enabled = false
-        if (!communicator.isLocked())
-          communicator.lockGroup()
-    }
-
 
     object nodeList extends ListView[String]{
       listData = communicator.listGroupMembers.map(_.toString).toList
@@ -121,8 +109,8 @@ class DebugGui(
       case UpdateGroupMembers(members) => {
         nodeList.listData = members.map(_.toString).toList
       }
-      case GroupLocked() => {
-        lockButton.enabled = false
+      case GroupUnlocked() => {
+        button.enabled = true
       }
       case TimeToDie() => {
         val t = new Thread(new Runnable {
@@ -154,8 +142,7 @@ class DebugGui(
           dropInput,
           dropText,
           delayInput,
-          button,
-          lockButton);
+          button);
     }
 
     contents = new GridBagPanel {
