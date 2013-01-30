@@ -93,7 +93,7 @@ The name server expects an RMI registry to be running on local host on the port
 \texttt{PORT}.
 
 To run the combined test/debugging application, use the following command:
-\begin{center}\texttt{gcom-client -p PORT -c RELIABILITY -o ORDERING NAMESERVER COMMAND}\end{center}
+\begin{center}\texttt{gcom-client -p PORT -c RELIABILITY -o ORDERING -l NODES NAMESERVER COMMAND}\end{center}
 
 Here, \texttt{NAMESERVER} is the address of the name server in the form of a
 \texttt{name:host:port} triple, and the \texttt{COMMAND} parameter is one of
@@ -102,8 +102,10 @@ the available groups, the second sends a ``kill'' message to the given group,
 and the third joins a given group and starts the graphical interface. The
 \texttt{-c} option sets the reliability mode (one of \texttt{\{reliable,
   unreliable\}}), and the \texttt{-o} option sets the ordering mode (one of
-\texttt{\{unordered, fifo, causal, total, causaltotal\}}). The \texttt{-p}
-option has the same meaning as for the name server.
+\texttt{\{unordered, fifo, causal, total, causaltotal\}}). The \texttt{-l} option
+specifies how many nodes need to have joined before operation starts, if left
+out or zero means dynamic group structure. The \texttt{-p} option has the same
+meaning as for the name server.
 
 \section{Requirements Specification}
 
@@ -217,6 +219,45 @@ server communicates only with the coordinator nodes. The central server is
 obviously a single point of failure, but the groups don't depend on it to
 function and we believe that a central group catalog is needed in any case so
 that new nodes can discover what groups exist in the system.
+\pagebreak
+\subsection{Modules}
+The Group module of GCom is exposed to the Application layer, but only the 
+methods defined in the Communicator interface. On its creation the application
+layer provides the appropriate GCom settings as well as a callback to execute
+when a message arrives. 
+
+Each layer in our system hooks into the lower layer by providing a callback 
+to call when a message is ready for the next level. To send a message the 
+application layer calls the sendToAll method on the group module which then 
+passes the message down in the stack. Each module adds the specific information 
+needed as the message passes through. The different layers and modules can 
+be seen in figure \ref{fig:modules}
+
+\begin{figure}[h]
+\centering
+\includegraphics[height=12cm]{graph2}
+\caption{Overview of the system}
+\label{fig:modules}
+\end{figure}
+
+
+\subsection{Debugger}
+
+The graphical debugging is implemented by using the Publisher/Reactor model in
+the Scala Swing wrapper. Each component extends the Publisher trait so that the
+graphical user interface can listen to that component. When the components have
+something new to push to the interface they publish an event containing that
+specific information. 
+
+\section{Limitations}
+
+The nameserver component does not periodically check that group leaders are still
+alive. This can lead to dead groups lingering in the system if a 
+group crashes and no new leader is chosen by the group to update the status. 
+
+Messages sent out of order after a node has joined the network can be discarded
+if the first message received by the node is not the first message sent. The
+ordering modules will discard on individual criteria.
 
 \pagebreak
 

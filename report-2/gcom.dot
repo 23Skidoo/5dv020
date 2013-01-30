@@ -1,0 +1,21 @@
+ digraph G {
+        graph [ dpi = 300 ]; 
+ 	APPLICATION [shape=record, label = "Application layer"]
+ 	GROUP       [shape=record, label = "Group Module"];
+	ORDER       [shape=record, label = "{Ordering Modules | {FIFO \| Causal \| Total \| CausalTotal}}"];
+	COM         [shape=record, label = "{Communication Modules|{Reliable \| Unreliable}}"];
+	TRANSPORT   [shape=record, label = "Transport Module"];
+ 	 
+	
+ 	APPLICATION -> GROUP [label = " sendToAll     "]
+ 	GROUP -> ORDER       [label = " sendToAll     "]
+ 	ORDER -> COM         [label = " sendToAll     "]
+ 	COM -> TRANSPORT     [label = " sendToHost     "]
+ 	
+ 	GROUP -> APPLICATION  [label = " Receive callback" ]
+ 	ORDER  -> GROUP       [label = " Receive callback" ]
+ 	COM -> ORDER          [label = " Receive callback" ]
+	TRANSPORT -> COM      [label = " Receive callback" ]
+
+	
+ }
