@@ -1,15 +1,16 @@
-import java.rmi.registry.Registry
+package gcom.test
+
 import java.rmi.registry.LocateRegistry
 
 import org.scalatest._
 import org.slf4j.LoggerFactory
-
 import gcom._
 import gcom.common._
 import gcom.transport._
 import gcom.communication._
 import gcom.ordering._
 import gcom.group._
+
 
 /** Requires an rmiregistry and nameserver running on port 31337. */
 class GroupSpec extends FlatSpec with BeforeAndAfter {
@@ -19,7 +20,7 @@ class GroupSpec extends FlatSpec with BeforeAndAfter {
   val port       = 31337
   val nameserver = connectToNameserver(NodeID("nameserver", host, port))
   val logger     = LoggerFactory.getLogger("groupspec")
-  val group      = Group("default", UnreliableMulticast(), NoOrdering())
+  val group      = Group("default", UnreliableMulticast(), NoOrdering(), 0)
 
   // Dummies, not used
   val transport     = BasicTransport.create(NodeID("dummy", host, port),
@@ -59,8 +60,8 @@ class GroupSpec extends FlatSpec with BeforeAndAfter {
   }
 
   "Nodes" should "be able to join groups" in {
-    val node1 = new NodeID("node1", host, port)
-    val node2 = new NodeID("node2", host, port)
+    val node1 = new NodeID("no1", host, port)
+    val node2 = new NodeID("no2", host, port)
     val communicator1 =
       BasicGroup.create(group, logger, nameserver,
                         node1, communication, ordering, {msg =>})
@@ -246,36 +247,42 @@ class GroupSpec extends FlatSpec with BeforeAndAfter {
   }
 
   "Groups" should "be lockable" in {
-    val node1 = new NodeID("node1", host, port)
-    val node2 = new NodeID("node2", host, port)
-    val node3 = new NodeID("node3", host, port)
-    val node4 = new NodeID("node4", host, port)
+    val node1 = new NodeID("nd1", host, port)
+    val node2 = new NodeID("nd2", host, port)
+    val node3 = new NodeID("nd3", host, port)
+    val node4 = new NodeID("nd4", host, port)
 
+    val lockedGroup = Group("default", UnreliableMulticast(), NoOrdering(), 3)
+    
     val communicator1 =
-      BasicGroup.create(group, logger, nameserver,
+      BasicGroup.create(lockedGroup, logger, nameserver,
                         node1, communication, ordering, {msg =>})
+    
+    assert(communicator1.isLocked() === true)
     val communicator2 =
-      BasicGroup.create(group, logger, nameserver,
+      BasicGroup.create(lockedGroup, logger, nameserver,
                         node2, communication, ordering, {msg =>})
+    assert(communicator1.isLocked() === true)
+    assert(communicator2.isLocked() === true)
     val communicator3 =
-      BasicGroup.create(group, logger, nameserver,
+      BasicGroup.create(lockedGroup, logger, nameserver,
                         node3, communication, ordering, {msg =>})
 
 
-    communicator3.lockGroup()
-    assert(communicator1.isLocked())
-    assert(communicator2.isLocked())
-    assert(communicator3.isLocked())
+    
+    assert(communicator1.isLocked() === false)
+    assert(communicator2.isLocked() === false)
+    assert(communicator3.isLocked() === false)
 
     intercept[RuntimeException] {
       val communicator4 =
-        BasicGroup.create(group, logger, nameserver,
+        BasicGroup.create(lockedGroup, logger, nameserver,
                           node4, communication, ordering, {msg =>})
     }
 
     communicator3.leaveGroup()
-    assert(communicator1.state === null)
-    assert(communicator2.state === null)
+    assert(communicator1.state != null)
+    assert(communicator2.state != null)
     assert(communicator3.state === null)
   }
 

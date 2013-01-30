@@ -22,7 +22,7 @@ case class CausalTotalOrdering() extends OrderingType;
 
 sealed case class Group (name : String
                          , multicast : MulticastType
-                         , ordering : OrderingType)
+                         , ordering : OrderingType, num: Int)
 
 trait NameServer extends Remote {
 
@@ -72,6 +72,5 @@ trait Communicator extends Publisher {
   def incCounter() : Int
 
   // Locking the group
-  def lockGroup() : Unit
   def isLocked() : Boolean
 }

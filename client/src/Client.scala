@@ -57,6 +57,13 @@ object Client {
     "name:host:port", "node ID of the name server") { (s, opt) =>
     NodeID.fromString(s)
   }
+  
+  val lockingopt = parser.option[Int](
+    List("l", "locking"),
+    "n", "lock group to n nodes in group") { (s, opt) =>
+    s.toInt  
+  }
+  
 
   sealed abstract class CommandType;
   case class CommandList() extends CommandType;
@@ -73,6 +80,7 @@ object Client {
   lazy val ordering = ordopt.value.getOrElse(NoOrdering())
   lazy val nameserver = nameserveropt.value.getOrElse(
     NodeID.fromString("nameserver:localhost:31337"))
+  lazy val maxNodes = lockingopt.value.getOrElse(0);
   lazy val command = commandopt.value match {
     case "list" :: Nil => CommandList()
     case "kill" :: groupName :: Nil => CommandKill(groupName)
@@ -133,9 +141,9 @@ object Client {
       command match {
         case CommandList()          => commandList(nsrv)
         case CommandKill(groupName) =>
-          commandKill(nsrv, Group(groupName, reliability, ordering))
+          commandKill(nsrv, Group(groupName, reliability, ordering, maxNodes))
         case CommandJoin(groupName) =>
-          commandJoin(nsrv, Group(groupName, reliability, ordering))
+          commandJoin(nsrv, Group(groupName, reliability, ordering, maxNodes))
       }
     }
     catch {
@@ -166,18 +174,26 @@ object Client {
   }
 
   def commandJoin(nsrv: NameServer, group : Group) = {
-    val (communicator, transport, comm, ordering) =
-          assembleCommunicator(nsrv, group)
-    // Calls communicator's setOnReceive
-    val debugGui =
+    try{
+      val (communicator, transport, comm, ordering) =
+            assembleCommunicator(nsrv, group)
+      
+      // Calls communicator's setOnReceive
+      val debugGui =
       new gcom.client.gui.DebugGui(transport,
                                     ordering,
                                     communicator, comm)
-    debugGui.visible = true
-    val transportThread = new Thread(transport)
-    transportThread.start()
-    //val gui = new gcom.client.gui.ChatGui(communicator)
-    //gui.main(Array[String]())
+      debugGui.visible = true
+      val transportThread = new Thread(transport)
+      transportThread.start()
+          
+    } catch {
+      case e : Exception => {
+        logger.error("Could not join group, " + e.getMessage())
+        //Exit with general error
+        System.exit(1);
+      }
+    }
   }
 
   def commandKill(nsrv: NameServer, group : Group) = {

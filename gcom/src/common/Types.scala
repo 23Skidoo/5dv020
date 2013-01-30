@@ -90,4 +90,4 @@ case class UpdateGroupMembers(view : Set[NodeID]) extends Event
 /* Sent by the group layer when it's time for us to kill ourselves. */
 case class TimeToDie() extends Event
 /* Sent by the group layer when the group is locked. */
-case class GroupLocked() extends Event
+case class GroupUnlocked() extends Event
