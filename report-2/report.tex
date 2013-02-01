@@ -220,17 +220,18 @@ obviously a single point of failure, but the groups don't depend on it to
 function and we believe that a central group catalog is needed in any case so
 that new nodes can discover what groups exist in the system.
 \pagebreak
+
 \subsection{Modules}
-The Group module of GCom is exposed to the Application layer, but only the 
+The Group module of GCom is exposed to the Application layer, but only the
 methods defined in the Communicator interface. On its creation the application
 layer provides the appropriate GCom settings as well as a callback to execute
-when a message arrives. 
+when a message arrives.
 
-Each layer in our system hooks into the lower layer by providing a callback 
-to call when a message is ready for the next level. To send a message the 
-application layer calls the sendToAll method on the group module which then 
-passes the message down in the stack. Each module adds the specific information 
-needed as the message passes through. The different layers and modules can 
+Each layer in our system hooks into the lower layer by providing a callback
+to call when a message is ready for the next level. To send a message the
+application layer calls the sendToAll method on the group module which then
+passes the message down in the stack. Each module adds the specific information
+needed as the message passes through. The different layers and modules can
 be seen in figure \ref{fig:modules}
 
 \begin{figure}[h]
@@ -240,20 +241,19 @@ be seen in figure \ref{fig:modules}
 \label{fig:modules}
 \end{figure}
 
-
 \subsection{Debugger}
 
 The graphical debugging is implemented by using the Publisher/Reactor model in
 the Scala Swing wrapper. Each component extends the Publisher trait so that the
 graphical user interface can listen to that component. When the components have
 something new to push to the interface they publish an event containing that
-specific information. 
+specific information.
 
 \section{Limitations}
 
-The nameserver component does not periodically check that group leaders are still
-alive. This can lead to dead groups lingering in the system if a 
-group crashes and no new leader is chosen by the group to update the status. 
+The name server does not periodically check that group leaders are
+still alive. This can lead to dead groups lingering in the system if a group
+crashes and no new leader is chosen by the group to update the status.
 
 Messages sent out of order after a node has joined the network can be discarded
 if the first message received by the node is not the first message sent. The
