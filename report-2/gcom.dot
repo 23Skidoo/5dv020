@@ -1,6 +1,6 @@
  digraph G {
         graph [ dpi = 300 ]; 
- 	APPLICATION [shape=record, label = "Application layer"]
+ 	APPLICATION [shape=record, label = "Client code"]
  	GROUP       [shape=record, label = "Group Module"];
 	ORDER       [shape=record, label = "{Ordering Modules | {FIFO \| Causal \| Total \| CausalTotal}}"];
 	COM         [shape=record, label = "{Communication Modules|{Reliable \| Unreliable}}"];

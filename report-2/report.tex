@@ -88,13 +88,12 @@ be found on GitHub under the address
 
 To run the name server, use the following command:
 \begin{center}\texttt{gcom-nameserver [-p PORT]}\end{center}
-
 The name server expects an RMI registry to be running on local host on the port
 \texttt{PORT}.
 
 To run the combined test/debugging application, use the following command:
-\begin{center}\texttt{gcom-client -p PORT -c RELIABILITY -o ORDERING -l NODES NAMESERVER COMMAND}\end{center}
-
+\begin{center}\texttt{gcom-client -p PORT -c RELIABILITY -o ORDERING  -n
+    NAMESERVER -l NUMNODES COMMAND}\end{center}
 Here, \texttt{NAMESERVER} is the address of the name server in the form of a
 \texttt{name:host:port} triple, and the \texttt{COMMAND} parameter is one of
 \texttt{list}, \texttt{kill NAME} or \texttt{join NAME}. The first command lists
@@ -102,10 +101,15 @@ the available groups, the second sends a ``kill'' message to the given group,
 and the third joins a given group and starts the graphical interface. The
 \texttt{-c} option sets the reliability mode (one of \texttt{\{reliable,
   unreliable\}}), and the \texttt{-o} option sets the ordering mode (one of
-\texttt{\{unordered, fifo, causal, total, causaltotal\}}). The \texttt{-l} option
-specifies how many nodes need to have joined before operation starts, if left
-out or zero means dynamic group structure. The \texttt{-p} option has the same
-meaning as for the name server.
+\texttt{\{unordered, fifo, causal, total, causaltotal\}}). The \texttt{-l}
+option is for creating static groups -- it specifies how many nodes need to join
+the group before communication starts; leaving \texttt{-l} out or setting it to
+zero makes the group structure dynamic. The \texttt{-p} option has the same
+meaning as for the name server (port number of the RMI registry).
+
+To save the user from the hassle of having to deal with Java classpath, we also
+provide our own registry executable (\texttt{gcom-registry}) that includes all
+GCom classes inside its JAR.
 
 \section{Requirements Specification}
 
@@ -114,7 +118,7 @@ two bonus levels that give additional points. Our solution implements the Level
 2 specificaton (basic level + dynamic groups).
 
 The GCom middleware consists of three logical modules: communication, message
-ordering and group management. Additionally, we are required to implement a GUI
+ordering and group management. Additionally, we were required to implement a GUI
 test application for showcasing the features of the GCom middleware and a GUI
 debug application for demonstrating that it works correctly.
 
@@ -135,9 +139,9 @@ the textbook\cite{Textbook}). Again, the type of ordering is set at module
 initialisation time. The same callback mechanism for passing control to the next
 layer is used here.
 
-The group management module is the user-facing part of the system implemented on
-top of the previous two modules. It allows to create and remove groups, add and
-remove group members, handles the monitoring of live nodes, keeps track of
+The group management module is the client-facing part of the system implemented
+on top of the previous two modules. It allows to create and remove groups, add
+and remove group members, handles the monitoring of live nodes, keeps track of
 changes in group membership, and allows to list the names of all existing
 groups.
 
@@ -158,7 +162,7 @@ the following features:
 \item Measurement of system performance.
 \end{itemize}
 
-\section{Design}
+\section{System Architecture}
 
 We decided to implement our system in Scala and use Java RMI through Scala
 interop for communication between nodes. The choice of Scala was motivated by
@@ -168,18 +172,42 @@ option (recommended in the assignment specification) and we felt that other
 messaging solutions that we looked at either didn't provide any benefit for our
 use case (Finagle) or did all the required work for us (ZeroMQ).
 
+\begin{figure}[h]
+\centering
+\includegraphics[height=12cm]{graph2}
+\caption{Overview of the system}
+\label{fig:modules}
+\end{figure}
+
+As suggested in the assignment specification, the system is decomposed into
+three layers (see figure~\ref{fig:modules}):
+
+\begin{itemize}
+\item Communication
+\item Message ordering
+\item Group management
+\end{itemize}
+
+Each successive layer does not know anything about the layers above it - for
+example, message ordering only depends on communication, but group management
+uses both communication and message ordering. This improves modularity and
+testability.
+
+\subsection{Communication and message ordering}
+
 The communication module is just a straightforward implementation of the
 textbook algorithms for reliable and unreliable multicast\cite{Textbook}. The
-same can be said about the message ordering module: FIFO ordering will be
-implemented with logical timestamps, vector clocks will be used for the causal
-ordering, total ordering will be implemented with a sequencer node (specified as
-one of the inputs to the send function), and causal-total is just a combination
-of causal and total.
+same can be said about the message ordering module: FIFO ordering is implemented
+with logical timestamps, vector clocks are used for the causal ordering, total
+ordering is implemented with a sequencer node (specified as one of the inputs to
+the send function), and causal-total is just a combination of causal and total.
+
+\subsection{Group management}
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=12cm]{graph1}
-\caption{Group management module.}
+\caption{Communication model used by the group management module.}
 \label{fig:group}
 \end{figure}
 
@@ -187,30 +215,46 @@ The group management module has a slightly more complicated design. Each node is
 identified by a (host, port number, name) triple. A group is identified by its
 name; names are globally unique, which is enforced by the name server that also
 associates an ID of a coordinator node with each group name. The central server
-is used a hub through each new nodes can discover and join existing groups.
+is used as a hub through which new nodes can discover and join existing
+groups. This model is illustrated in figure~\ref{fig:group}.
 
-The coordinator node in each group serves as a message sequencer and gateway
-through which new nodes join the group. The process of joining a group is
-illustrated in figure~\ref{fig:group}. A node first contacts the central server,
-which knows the names of all groups and all coordinator nodes. When a node has
-chosen which group it wants to join, it contacts the coordinator for that group
-and receives the list of all group members. The group members then synchronise
-its view of group membership and the node is considered admitted.
+The coordinator node in each group serves as a gateway through which new nodes
+join the group. To join a group, a node first contacts the central server, which
+knows the names of all groups and all coordinator nodes. When a node has chosen
+which group it wants to join, it contacts the coordinator for that group and
+receives the list of all group members. The group members then synchronise its
+view of group membership and the node is considered admitted.
 
-If the coordinator node dies or leaves the group, a new coordinator is elected,
-and all group members and the central server are notified. The 2-phase commit
-protocol is used to ensure that all nodes have a consistent view of group
-membership, group coordinator and the value of the total ordering
+The 2-phase commit protocol is used to ensure that all nodes have a consistent
+view of group membership, group coordinator and the value of the total ordering
 counter. Originally, we planned to use Paxos, but that turned out to be too
 onerous to implement, and 2PC was fine for our purposes (fail-stop failure
 model). Since the focus of this assignment is on multicast and message ordering,
 we feel fine with a simplified solution.
 
+The 2PC algorithm provides us with a relatively simple and straightforward way
+to implement consistent shared state, which enables us to program the group
+management module in a replicated state machine style (all nodes start in the
+same initial state and agree on successive transitions). This simplifies
+debugging and reasoning about the system.
+
+If the coordinator node dies or leaves the group, a new coordinator is elected,
+and all group members and the central server are notified. A deterministic
+election algorithm is used -- the new leader is just the node with the lowest ID
+number (that is, the oldest node in the group). This ensures that when two
+different nodes simultaneously decide to elect a new coordinator, the same
+candidate is chosen by both nodes. Thus, coordinator election can be implemented
+simply as updating a single field of the shared state record, since the
+immediately following updates of that field by other nodes will be idempotent.
+
 In case a group gets partitioned, each partition will elect a new coordinator
-and will continue to function independently. The ones that can't contact the
-central server will know that they are the ones ``left behind''. They can choose
-to either shut down, continue to communicate among themselves or wait for the
-central server to become available and try to rejoin the group.
+and continue to function independently. The ones that can't contact the central
+server will know that they are the ones ``left behind''. They can choose to
+either shut down, continue to communicate among themselves or wait for the
+central server to become available and try to rejoin the group (currently, only
+the first option is implemented).
+
+\subsection{Scalability}
 
 The system is designed to scale fairly well, since at no point there is a need
 to communicate with or store the names of all nodes in the system. Each node
@@ -219,29 +263,28 @@ server communicates only with the coordinator nodes. The central server is
 obviously a single point of failure, but the groups don't depend on it to
 function and we believe that a central group catalog is needed in any case so
 that new nodes can discover what groups exist in the system.
-\pagebreak
 
-\subsection{Modules}
-The Group module of GCom is exposed to the Application layer, but only the
-methods defined in the Communicator interface. On its creation the application
-layer provides the appropriate GCom settings as well as a callback to execute
+\subsection{Communication between components}
+
+The group management module is exposed to the client, but only through the
+methods defined in the Communicator interface (see
+\texttt{gcom/src/GCom.scala}). On the creation of a Communicator object the
+client provides the appropriate GCom settings as well as a callback to execute
 when a message arrives.
 
-Each layer in our system hooks into the lower layer by providing a callback
-to call when a message is ready for the next level. To send a message the
-application layer calls the sendToAll method on the group module which then
-passes the message down in the stack. Each module adds the specific information
-needed as the message passes through. The different layers and modules can
-be seen in figure \ref{fig:modules}
+Each layer in our system hooks into the lower layer by providing a callback to
+call when a message is ready for the next level. To send a message the
+application layer calls the \texttt{sendToAll} method of the Communicator object
+which then passes the message down to lower layers. Each module adds the
+specific information needed as the message passes through. This is illustrated
+in figure~\ref{fig:modules}
 
-\begin{figure}[h]
-\centering
-\includegraphics[height=12cm]{graph2}
-\caption{Overview of the system}
-\label{fig:modules}
-\end{figure}
+When a layer needs to get some information from a layer above, it invokes a
+callback that it was passed at creation time. For example, this is used by the
+total ordering module to increment the value of the shared counter (which is
+managed by the group management layer).
 
-\subsection{Debugger}
+\subsection{Implementation of the debugger}
 
 The graphical debugging is implemented by using the Publisher/Reactor model in
 the Scala Swing wrapper. Each component extends the Publisher trait so that the
@@ -249,11 +292,27 @@ graphical user interface can listen to that component. When the components have
 something new to push to the interface they publish an event containing that
 specific information.
 
+Communication in the other direction (from the interface to the GCom code --
+e.g., when the user presses a button) is implemented by just calling the
+appropriate methods of the corresponding GCom component from the GUI code.
+
 \section{Limitations}
 
-The name server does not periodically check that group leaders are
-still alive. This can lead to dead groups lingering in the system if a group
-crashes and no new leader is chosen by the group to update the status.
+The system is designed to be scalable - we deliberately avoided algorithms that
+are $O(g \times \Sigma n_g)$ in space and/or time (here, $g$ is the number of
+groups and $n_g$ is the number of members in group $g$). The dependency is
+either on $g$ or on $n_g$, but never on both.
+
+The name server does not do a periodic check that group leaders are still
+alive. If a whole group suddenly crashes or becomes unavailable, a stale
+reference to its group leader will be preserved by the name server.
+
+If a network gets partitioned, a partition that can't reach the name server but
+includes the old leader will continue to function, while the other partition
+will elect a new leader and update the name server with this information - thus,
+the group will be split in two. This can be fixed by checking whether the name
+server is still reachable when a group leader discovers that some nodes in the
+group have become unavailable.
 
 Messages sent out of order after a node has joined the network can be discarded
 if the first message received by the node is not the first message sent. The
